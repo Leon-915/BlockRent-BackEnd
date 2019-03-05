@@ -1,0 +1,530 @@
+openapi: 3.0.2
+info:
+  version: 0.0.1
+  title: BlockRent API
+  description: BlockRent API
+
+paths:
+
+  '/applications':
+    post:
+      summary: Submit application form
+      tags:
+        - registration
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewApplication'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  '/users/{userId}':
+    patch:
+      summary: Update users
+      tags:
+        - users
+      parameters:
+        - $ref: '#/components/parameters/userId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewBankAccount'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  '/properties/{propertyId}/deposits':
+    post:
+      summary: Make a deposit
+      tags:
+        - deposits
+      parameters:
+        - $ref: '#/components/parameters/propertyId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewDeposit'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deposit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  '/properties/{propertyId}/deposits/{depositId}/withdrawls':
+    post:
+      summary: Withdraw a deposit
+      tags:
+        - deposits
+      parameters:
+        - $ref: '#/components/parameters/propertyId'
+        - $ref: '#/components/parameters/depositId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewWithdrawl'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Withdrawl'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  '/properties/{propertyId}/deposits/{depositId}/refunds':
+    post:
+      summary: Refund a deposit
+      tags:
+        - deposits
+      parameters:
+        - $ref: '#/components/parameters/propertyId'
+        - $ref: '#/components/parameters/depositId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewRefund'
+        required: true
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Refund'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  parameters:
+    applicationId:
+      in: path
+      name: applicationId
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    userId:
+      in: path
+      name: userId
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    propertyId:
+      in: path
+      name: propertyId
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    depositId:
+      in: path
+      name: depositId
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+
+    NewApplication:
+      type: object
+      properties:
+        tenantFirstName:
+          type: string
+        tenantLastName:
+          type: string
+        tenantPhone:
+          type: string
+        tenantEmail:
+          type: string
+        ejariContractNo:
+          type: string
+        propertyAddress:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        premiseNo:
+          type: string
+        securityDeposit:
+          type: number
+        managerFirstName:
+          type: string
+        managerLastName:
+          type: string
+        managerPhone:
+          type: string
+        managerEmail:
+          type: string
+      required:
+        - tenantFirstName
+        - tenantLastName
+        - tenantPhone
+        - tenantEmail
+        - ejariContractNo
+        - propertyAddress
+        - startDate
+        - endDate
+        - premiseNo
+        - securityDeposit
+        - managerFirstName
+        - managerLastName
+        - managerPhone
+        - managerEmail
+
+    Application:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantFirstName:
+          type: string
+        tenantLastName:
+          type: string
+        tenantPhone:
+          type: string
+        tenantEmail:
+          type: string
+        ejariContractNo:
+          type: string
+        propertyAddress:
+          type: string
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        premiseNo:
+          type: string
+        securityDeposit:
+          type: number
+        managerFirstName:
+          type: string
+        managerLastName:
+          type: string
+        managerPhone:
+          type: string
+        managerEmail:
+          type: string
+        status:
+          $ref: '#/components/schemas/ApplicationStatus'
+        createdAt:
+          type: string
+          format: date
+        updatedAt:
+          type: string
+          format: date
+      required:
+        - tenantFirstName
+        - tenantLastName
+        - tenantPhone
+        - tenantEmail
+        - ejariContractNo
+        - propertyAddress
+        - startDate
+        - endDate
+        - premiseNo
+        - securityDeposit
+        - managerFirstName
+        - managerLastName
+        - managerPhone
+        - managerEmail
+        - status
+        - createdAt
+
+    ApplicationStatus:
+      type: string
+      enum:
+        - IN_PROGRESS
+        - UNVERIFIED
+        - VERIFIED
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        bankAccount:
+          $ref: '#/components/schemas/BankAccount'
+        createdAt:
+          type: string
+          format: date
+        updatedAt:
+          type: string
+          format: date
+      required:
+        - id
+        - firstName
+        - lastName
+        - phone
+        - email
+        - createdAt
+
+    NewBankAccount:
+      type: object
+      properties:
+        bankName:
+          type: string
+        bsb:
+          type: string
+        accountNumber:
+          type: string
+      required:
+        - bankName
+        - bsb
+        - accountNumber
+
+    BankAccount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bankName:
+          type: string
+        bsb:
+          type: string
+        accountNumber:
+          type: string
+        createdAt:
+          type: string
+          format: date
+        updatedAt:
+          type: string
+          format: date
+      required:
+        - id
+        - bankName
+        - bsb
+        - accountNumber
+        - createdAt
+
+    NewDeposit:
+      type: object
+      properties:
+        userId:
+          type: string
+        amount:
+          type: number
+          format: uuid
+      required:
+        - userId
+        - amount
+
+    Deposit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        status:
+          $ref: '#/components/schemas/DepositStatus'
+        createdAt:
+          type: string
+          format: date
+        updatedAt:
+          type: string
+          format: date
+      required:
+        - id
+        - userId
+        - propertyId
+        - amount
+        - status
+        - createdAt
+
+    NewWithdrawl:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        reason:
+          type: string
+      required:
+        - userId
+
+    Withdrawl:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        depositId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        reason:
+          type: string
+        status:
+          $ref: '#/components/schemas/DepositStatus'
+        createdAt:
+          type: string
+          format: date
+        updatedAt:
+          type: string
+          format: date
+      required:
+        - id
+        - userId
+        - propertyId
+        - depositId
+        - amount
+        - reason
+        - status
+        - createdAt
+
+    NewRefund:
+      type: object
+      properties:
+        userId:
+          type: string
+        amount:
+          type: number
+        reason:
+          type: string
+      required:
+        - userId
+        - amount
+        - reason
+
+    Refund:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        propertyId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        reason:
+          type: string
+        status:
+          $ref: '#/components/schemas/DepositStatus'
+        createdAt:
+          type: string
+          format: date
+        updatedAt:
+          type: string
+          format: date
+      required:
+        - id
+        - userId
+        - propertyId
+        - amount
+        - reason
+        - status
+        - createdAt
+
+    DepositStatus:
+      type: string
+      enum:
+        - PENDING
+        - SUCCESSFUL
+        - FAILED
+        - WITHDRAWN
+        - PARTIALLY_REFUNDED
+        - REFUNDED
+
+    Error:
+      type: object
+      properties:
+        errorCode:
+          type: number
+        error:
+          type: string
+        errorDetail:
+          type: string
+      required:
+        - errorCode
+        - error
+        - errorDetail
+
+  responses:
+
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
