@@ -34,6 +34,7 @@ user fields:
     verified_at
 """
 
+
 class UserResource(ModelResource):
     class Meta:
         queryset = User.objects.all()
@@ -193,16 +194,18 @@ class RegistrationResource(ModelResource):
     class Meta:
         queryset = Registration.objects.all()
         resource_name = 'registerApplication'
-        authorization = Authorization()
+        #authorization = Authorization()
         allowed_methods = ['post']
         
     def obj_create(self, bundle, request=None, **kwargs):
-    
-        
-        tenant_first_name = bundle.data['tenantDetails']['firstName']
-        tenant_last_name = bundle.data['tenantDetails']['lastName']
-        owner_first_name = bundle.data['ownerDetails']['firstName']
-        owner_last_name = bundle.data['ownerDetails']['lastName']
+        print(bundle.data)
+        registrationForm = bundle.data['registrationForm']
+        tenantDetails = registrationForm['personalDetails']
+        ownerDetails = registrationForm['otherParty']
+        tenant_first_name = registrationForm['personalDetails']['firstName']
+        tenant_last_name = registrationForm['personalDetails']['lastName']
+        owner_first_name = registrationForm['otherParty']['firstName']
+        owner_last_name = registrationForm['otherParty']['lastName']
         
 
         try: ##try to find if registrant user exist
