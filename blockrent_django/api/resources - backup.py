@@ -98,6 +98,7 @@ Application fields:
     application_created_date
 """
 
+class ApplicationConfirmResource(ModelResource):
     class Meta:
         queryset = Application.objects.all()
         resource_name = 'confirmApplication'

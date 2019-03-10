@@ -34,71 +34,6 @@ User Model, there are three types of users:
 """
 
 
-class User(AbstractBaseUser):
-    
-    TENANT = 'TENANT'
-    OWNER = 'OWNER'
-    ADMIN = 'ADMIN'
-    TEST = 'TEST'
-    
-    USER_TYPE_CHOICES = (
-        (TENANT, 'TENANT'),
-        (OWNER, 'OWNER'),
-        (ADMIN, 'ADMIN'),
-        (TEST, 'TEST')
-    )
-    
-    accountType = models.CharField(max_length=64, choices=USER_TYPE_CHOICES, default=TEST)
-    
-    USER_STATUS_CHOICES = (
-        ('NEW', 'NEW'),
-        ('VERIFIED', 'VERIFIED'),
-        ('SUSPENDED', 'SUSPENDED'),
-    )
-    
-    accountStatus = models.CharField(max_length=64, choices=USER_STATUS_CHOICES, default='NEW')
-    
-    firstName = models.CharField(max_length=256, blank=True)
-    lastName = models.CharField(max_length=256, blank=True)
-    
-    contactNumber = models.CharField(max_length=64, blank=True)
-    email = models.EmailField(verbose_name='email address', max_length=128, unique=True)
-    
-    accountID = models.CharField(max_length=256, default="FFFF", unique=True)
-    password = models.CharField(max_length=256, default="FFFF")
-    secret_key = models.CharField(max_length=64, blank=True)
-    password_reset_token = models.CharField(max_length=512, blank=True)
-    bankBSB = models.CharField(max_length=64, blank=True)
-    bankNo = models.CharField(max_length=128, blank=True)
-    bankName = models.CharField(max_length=256, blank=True)
-    createdAt = models.DateTimeField(auto_now_add=True)
-
-    is_active = models.BooleanField(default=True)
-    is_admin = models.BooleanField(default=False)
-
-    objects = UserManager()
-    USERNAME_FIELD = 'email'
-
-    class Meta:
-        db_table = 'auth_user'
-    
-    def __str__(self):
-        return '%s %s %s %s %s %s %s' % (self.accountID, self.accountType, self.accountStatus, self.firstName,
-                                         self.lastName, self.contactNumber, self.email)
-
-    @property
-    def is_staff(self):
-        return self.is_admin
-
-    @property
-    def is_superuser(self):
-        return self.is_admin
-    
-    def has_module_perms(self, app_label):
-        return self.is_admin
-
-    def has_perm(self, perm, obj=None):
-        return self.is_admin
 
 
 """
@@ -127,41 +62,6 @@ Application Model, model used for security deposits
 """
 
 
-class Application(models.Model):
-
-    APPLICATION_STATUS_CHOICES = (
-        ('NEW', 'NEW'),
-        ('CONFIRMED', 'CONFIRMED'),
-        ('ACTIVE', 'ACTIVE'),
-        ('SUSPENDED', 'SUSPENDED'),
-        ('DISPUTE', 'DISPUTE'),
-        ('COMPLETE', 'COMPLETE'),
-    )
-    
-    status = models.CharField(max_length=64, choices=APPLICATION_STATUS_CHOICES, default='NEW')
-    isConfirmedByTenant = models.CharField(max_length=64, default="NO")
-    isConfirmedByOwner = models.CharField(max_length=64, default="NO")
-    
-    ejariNo = models.CharField(max_length=128)
-    premisNo = models.CharField(max_length=128)
-    internalID = models.CharField(max_length=128)
-    tenantID = models.CharField(max_length=512)
-    ownerID = models.CharField(max_length=512)
-    
-    address = models.CharField(max_length=256)
-    
-    statDate = models.DateTimeField(blank=True)
-    endDate = models.DateTimeField(blank=True)
-    
-    depositAmount = models.CharField(max_length=128,  blank=True)
-    depositHolding = models.CharField(max_length=64, blank=True)
-    createdAt = models.DateTimeField(auto_now_add=True)
-    
-    tenantDisputeClaim = models.CharField(max_length=2048, blank=True)
-    ownerDisputeClaim = models.CharField(max_length=2048, blank=True)
-    
-    def __str__(self):
-        return self.ejariNo
     
     
 """
