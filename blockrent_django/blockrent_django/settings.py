@@ -37,8 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'tastypie',
-    'api'
+    'api',
 ]
 
 MIDDLEWARE = [
@@ -135,3 +136,11 @@ STATIC_URL = '/static/'
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
+
+AUTH_USER_MODEL = 'api.User'
+
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = os.environ.get('EMAIL_USER')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_USER_PASSWORD')
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True

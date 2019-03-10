@@ -24,6 +24,7 @@ from django.conf.urls import url, include
 from django.contrib import admin
 from tastypie.api import Api
 from api.resources import UserResource, ApplicationResource, EventResource, RegistrationResource, ApplicationConfirmResource
+from api.views import activate
 
 v1_api = Api(api_name='v1')
 v1_api.register(UserResource())
@@ -40,6 +41,8 @@ event_resource = EventResource()
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^api/', include(v1_api.urls)),
+    url(r'^activate/(?P<uidb64>[0-9A-Za-z_\-]+)/(?P<token>[0-9A-Za-z]{1,13}-[0-9A-Za-z]{1,20})/$',
+        activate, name='activate')
 ]
 
 
