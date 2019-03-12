@@ -1,7 +1,7 @@
 # api/resources.py
 
-from tastypie.authorization import Authorization
-from tastypie.authentication import BasicAuthentication
+from tastypie.authorization import Authorization, DjangoAuthorization
+from tastypie.authentication import BasicAuthentication, ApiKeyAuthentication
 from tastypie import fields
 from tastypie.validation import Validation
 from tastypie.resources import ModelResource, ALL, ALL_WITH_RELATIONS
@@ -9,7 +9,11 @@ from api.models import User
 from api.models import Application
 from api.models import Event
 from api.models import Registration
-from api.core.helpers import send_email_notification, send_account_creation_email
+from api.core.helpers import send_application_confirm_email, send_account_creation_email
+from django.contrib.auth import authenticate, login, logout
+from django.conf.urls import url
+from tastypie.utils import trailing_slash
+from tastypie.http import HttpUnauthorized, HttpForbidden
 import uuid 
 
 
@@ -38,8 +42,7 @@ class UserResource(ModelResource):
         queryset = User.objects.all()
         resource_name = 'users'
         authorization = Authorization()
-        authentication = BasicAuthentication()
-        always_return_data = True
+        authentication = ApiKeyAuthentication()
         filtering = {
             'accountID': 'exact',
             'firstName': 'iexact',
@@ -48,6 +51,54 @@ class UserResource(ModelResource):
             'accounType': ALL,
             'accountStatus': ALL,
         }
+
+    def prepend_urls(self):
+        return [
+            url(r'^(?P<resource_name>%s)/login%s$' % (self._meta.resource_name, trailing_slash()),
+                self.wrap_view('login'), name='api_login'),
+            url(r'^(?P<resource_name>%s)/logout%s$' % (self._meta.resource_name, trailing_slash()),
+                self.wrap_view('logout'), name='api_logout'),
+        ]
+
+    def get_api_key_for_user(self, user):
+        try:
+            return '%s' % (user.api_key.key)
+        except:
+            return 'Key not found'
+
+    def login(self, request, **kwargs):
+        self.method_check(request, allowed=['post'])
+        data = self.deserialize(request, request.body)
+        username = data['email']
+        password = data['password']
+
+        user = authenticate(username=username, password=password)
+        if user:
+            if user.is_active:
+                login(request, user)
+                return self.create_response(request, {
+                    'success': True,
+                    'username': user.get_username(),
+                    'api_key': self.get_api_key_for_user(user)
+                })
+            else:
+                return self.create_response(request, {
+                    'success': False,
+                    'reason': 'disabled',
+                }, HttpForbidden)
+        else:
+            return self.create_response(request, {
+                'success': False,
+                'reason': 'incorrect'
+            }, HttpUnauthorized)
+
+    def logout(self, request, **kwargs):
+        self.method_check(request, allowed=['get'])
+        if request.user and request.user.is_authenticated():
+            logout(request)
+            return self.create_response(request, {'success': True})
+        else:
+            return self.create_response(request, {'success': False}, HttpUnauthorized)
 
 
 """
@@ -98,6 +149,7 @@ Application fields:
     application_created_date
 """
 
+class ApplicationConfirmResource(ModelResource):
     class Meta:
         queryset = Application.objects.all()
         resource_name = 'confirmApplication'
@@ -180,7 +232,6 @@ class RegistrationResource(ModelResource):
         allowed_methods = ['post']
         
     def obj_create(self, bundle, request=None, **kwargs):
-        print(bundle.data)
         registrationForm = bundle.data['registrationForm']
         tenantDetails = registrationForm['personalDetails']
         ownerDetails = registrationForm['otherParty']
@@ -272,8 +323,7 @@ class RegistrationResource(ModelResource):
                      endDate=leaseApplicationDetails['contractEndDate']
                      )
             new_application.save()
-            
-            
+
             ##Log the event
             registrationEvent = Event(
                      referenceid=generated_application_id,
@@ -282,3 +332,4 @@ class RegistrationResource(ModelResource):
                      #when=bundle.data['createdAt']
                      )
             registrationEvent.save()
+            send_application_confirm_email(tenant, owner, new_application)

@@ -1,5 +1,9 @@
 {% autoescape off %}
-    Hi {{ user.firstName }} {{ user.lastName }}
-    Your password is {{ password }}
-    Thanks.
+    Hi {{ user.firstName }} {{ user.lastName }}!
+    Welcome to Blockrent! Here is your account details:
+    Username: {{ user.email }}
+    Password: {{ password }}
+    Best Regards !
+    The Blockrent Team
+    <\From admin@blocknet.net>
 {% endautoescape %}
