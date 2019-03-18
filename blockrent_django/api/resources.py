@@ -15,7 +15,11 @@ from django.conf.urls import url
 from django.db.models import Q
 from tastypie.utils import trailing_slash
 from tastypie.http import HttpUnauthorized, HttpForbidden
-import uuid 
+import uuid
+from django.core.exceptions import (
+    ObjectDoesNotExist, MultipleObjectsReturned, ValidationError, FieldDoesNotExist
+)
+from tastypie import http
 
 
 """
@@ -42,15 +46,15 @@ class UserResource(ModelResource):
     class Meta:
         queryset = User.objects.all()
         resource_name = 'users'
-        authorization = Authorization()
+        authorization = DjangoAuthorization()
         authentication = ApiKeyAuthentication()
         filtering = {
-            'accountID': 'exact',
-            'firstName': 'iexact',
-            'lastName': 'iexact',
+            'account_id': 'exact',
+            'first_name': 'iexact',
+            'last_name': 'iexact',
             'email': 'iexact',
             'accounType': ALL,
-            'accountStatus': ALL,
+            'account_status': ALL,
         }
 
     def prepend_urls(self):
@@ -95,7 +99,7 @@ class UserResource(ModelResource):
 
     def logout(self, request, **kwargs):
         self.method_check(request, allowed=['get'])
-        if request.user and request.user.is_authenticated():
+        if request.user and request.user.is_authenticated:
             logout(request)
             return self.create_response(request, {'success': True})
         else:
@@ -134,9 +138,59 @@ class ApplicationResource(ModelResource):
             'application_address': ALL,
         }
 
+    def dehydrate(self, bundle):
+        tenant = User.objects.get(account_id=bundle.data['tenant_id'])
+        owner = User.objects.get(account_id=bundle.data['owner_id'])
+        bundle.data['tenant_name'] = tenant.username
+        bundle.data['tenant_first_name'] = tenant.first_name
+        bundle.data['tenant_last_name'] = tenant.last_name
+        bundle.data['tenant_phone_number'] = tenant.contact_number
+        bundle.data['tenant_email'] = tenant.email
+
+        bundle.data['owner_name'] = owner.username
+        bundle.data['owner_first_name'] = owner.first_name
+        bundle.data['owner_last_name'] = owner.last_name
+        bundle.data['owner_phone_number'] = owner.contact_number
+        bundle.data['owner_email'] = owner.email
+        return super(ApplicationResource, self).dehydrate(bundle)
+
+    def get_list(self, request, **kwargs):
+        base_bundle = self.build_bundle(request=request)
+        objects = self.obj_get_list(bundle=base_bundle, **self.remove_api_resource_names(kwargs))
+        sorted_objects = self.apply_sorting(objects, options=request.GET)
+
+        paginator = self._meta.paginator_class(request.GET, sorted_objects, resource_uri=self.get_resource_uri(),
+                                               limit=self._meta.limit, max_limit=self._meta.max_limit,
+                                               collection_name=self._meta.collection_name)
+        to_be_serialized = paginator.page()
+
+        # Dehydrate the bundles in preparation for serialization.
+        bundles = [
+            self.full_dehydrate(self.build_bundle(obj=obj, request=request), for_list=True)
+            for obj in to_be_serialized[self._meta.collection_name]
+        ]
+
+        to_be_serialized[self._meta.collection_name] = bundles
+        to_be_serialized = self.alter_list_data_to_serialize(request, to_be_serialized)
+
+        return self.create_response(request, to_be_serialized)
+
     def get_detail(self, request, **kwargs):
-        applications = super(ApplicationResource, self).get_object_list(request)
-        return applications.filter(Q(tenantID=request.user.accountID) | Q(ownerID=request.user.accountID))
+        #applications = super(ApplicationResource, self).get_object_list(request)
+        #return applications.filter(Q(tenant_id=request.user.account_id) | Q(owner_id=request.user.account_id))
+        basic_bundle = self.build_bundle(request=request)
+
+        try:
+            obj = self.cached_obj_get(bundle=basic_bundle, **self.remove_api_resource_names(kwargs))
+        except ObjectDoesNotExist:
+            return http.HttpNotFound()
+        except MultipleObjectsReturned:
+            return http.HttpMultipleChoices("More than one resource is found at this URI.")
+
+        bundle = self.build_bundle(obj=obj, request=request)
+        bundle = self.full_dehydrate(bundle)
+        bundle = self.alter_detail_data_to_serialize(request, bundle)
+        return self.create_response(request, bundle)
 
 
 """
@@ -159,31 +213,31 @@ class ApplicationConfirmResource(ModelResource):
     class Meta:
         queryset = Application.objects.all()
         resource_name = 'confirmApplication'
-        authorization = Authorization()
+        authorization = DjangoAuthorization()
+        authentication = ApiKeyAuthentication()
         
     def obj_create(self, bundle, request=None, **kwargs):
         
         """
         Updates the status of the Application
         """
-        
         applicationID = bundle.data['applicationID']
         userID = bundle.data['userID']
         
         try:
-             application_to_confirm = Application.objects.get(internalID=applicationID) ##get application object
+             application_to_confirm = Application.objects.get(internal_id=applicationID) ##get application object
              
-             tenantID = application_to_confirm.tenantID
-             onwerID = application_to_confirm.ownerID
+             tenant_id = application_to_confirm.tenant_id
+             owner_id = application_to_confirm.owner_id
              
              ## Update the Confirmation Field
-             if userID == tenantID: 
-                 application_to_confirm.isConfirmedByTenant = "YES"
-             elif userID == onwerID:
-                 application_to_confirm.isConfirmedByOwner = "YES"
+             if userID == tenant_id:
+                 application_to_confirm.is_confirmed_by_tenant = "YES"
+             elif userID == owner_id:
+                 application_to_confirm.is_confirmed_by_owner = "YES"
                  
              ## Update status of application if both have been confirmed
-             if application_to_confirm.isConfirmedByTenant == "YES" and application_to_confirm.isConfirmedByOwner == "YES":
+             if application_to_confirm.is_confirmed_by_tenant == "YES" and application_to_confirm.is_confirmed_by_owner == "YES":
                  application_to_confirm.status = "CONFIRMED"
                  
              application_to_confirm.save()
@@ -214,7 +268,8 @@ class EventResource(ModelResource):
     class Meta:
         queryset = Event.objects.all()
         resource_name = 'events'
-        authorization = Authorization()
+        authorization = DjangoAuthorization()
+        authentication = ApiKeyAuthentication()
         filtering = {
             'event_id': 'exact',
             'event_type': 'iexact',
@@ -239,9 +294,12 @@ class RegistrationResource(ModelResource):
         
     def obj_create(self, bundle, request=None, **kwargs):
         registrationForm = bundle.data['registrationForm']
+
         tenantDetails = registrationForm['personalDetails']
         ownerDetails = registrationForm['otherParty']
         leaseApplicationDetails = registrationForm['leaseApplicationDetails']
+        depositDetails = registrationForm['depositDetails']
+
         tenant_first_name = tenantDetails['firstName']
         tenant_last_name = tenantDetails['lastName']
         owner_first_name = ownerDetails['firstName']
@@ -249,21 +307,22 @@ class RegistrationResource(ModelResource):
 
         try: ##try to find if registrant user exist
              tenant = User.objects.get(email=tenantDetails['email'])
-             generated_tenant_id = tenant.accountID 
+             generated_tenant_id = tenant.account_id
         except User.DoesNotExist: ##if doesn't exist create a new object
             
             ##excuse my shit way of doing this, randomly generating user_id
-            random_uid = str(uuid.uuid4())
-            generated_tenant_id = str(tenant_first_name)[0] + str(tenant_last_name)[0] + random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
+            random_uid = str(uuid.uuid4().hex)
+            generated_tenant_id = random_uid
+            #generated_tenant_id = str(tenant_first_name)[0] + str(tenant_last_name)[0] + random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
             generated_tenant_password = random_uid[4] + random_uid[5] + random_uid[6] + random_uid[7] + str(tenant_first_name)[0] + str(tenant_last_name)[0]
             print('tenant password: ' + generated_tenant_password)
-            
+
             tenant = User(
-                     accountID=generated_tenant_id,
-                     accountType="TENANT",
-                     firstName=tenant_first_name,
-                     lastName=tenant_last_name,
-                     contactNumber=tenantDetails['phoneNumber'],
+                     account_id=generated_tenant_id,
+                     account_type="TENANT",
+                     first_name=tenant_first_name,
+                     last_name=tenant_last_name,
+                     contact_number=tenantDetails['phoneNumber'],
                      email=tenantDetails['email'])
             tenant.set_password(generated_tenant_password)
             tenant.save()
@@ -272,62 +331,69 @@ class RegistrationResource(ModelResource):
             
             ##Log the event
             registrationEvent = Event(
-                     referenceid=generated_tenant_id,
-                     what="TENANT REGISTRATION",
-                     who=generated_tenant_id,
-                     #when=bundle.data['createdAt']
-                     )
+                referenceid=generated_tenant_id,
+                what="TENANT REGISTRATION",
+                who=generated_tenant_id,
+                #when=bundle.data['createdAt']
+            )
             registrationEvent.save()
 
         try: ##try to find if owner user exist
              owner = User.objects.get(email=ownerDetails['email'])
              
-             generated_owner_id = owner.accountID 
+             generated_owner_id = owner.account_id
         except User.DoesNotExist: ##if doesn't exist create a new object
             
-            random_uid = str(uuid.uuid4())
-            generated_owner_id = str(owner_first_name)[0] + str(owner_last_name)[0] + random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
+            random_uid = str(uuid.uuid4().hex)
+            generated_owner_id = random_uid
+            #generated_owner_id = str(owner_first_name)[0] + str(owner_last_name)[0] + random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
             generated_owner_password = random_uid[4] + random_uid[5] + random_uid[6] + random_uid[7] + str(owner_first_name)[0] + str(owner_last_name)[0]
             print('owner password: ' + generated_owner_password)
             
             owner = User(
-                     accountID=generated_owner_id,
-                     accountType="OWNER",
-                     firstName=ownerDetails['firstName'],
-                     lastName=ownerDetails['lastName'],
-                     contactNumber=ownerDetails['phoneNumber'],
-                     email=ownerDetails['email'])
+                account_id=generated_owner_id,
+                account_type="OWNER",
+                first_name=ownerDetails['firstName'],
+                last_name=ownerDetails['lastName'],
+                contact_number=ownerDetails['phoneNumber'],
+                email=ownerDetails['email'])
             owner.set_password(generated_owner_password)
             owner.save()
             send_account_creation_email(owner, generated_owner_password)
             
             ##Log the event
             registrationEvent = Event(
-                     referenceid=generated_owner_id,
-                     what="OWNER REGISTRATION",
-                     who=generated_owner_id,
-                     #when=bundle.data['createdAt']
-                     )
+                referenceid=generated_owner_id,
+                what="OWNER REGISTRATION",
+                who=generated_owner_id,
+                #when=bundle.data['createdAt']
+                )
             registrationEvent.save()
             
         try: ##try to find if application allready exist
-             owner = Application.objects.get(ejariNo=leaseApplicationDetails['contractNo'])
+             owner = Application.objects.get(ejari_no=leaseApplicationDetails['contractNo'])
         except Application.DoesNotExist: ##if doesn't exist create a new object
-            random_uid = str(uuid.uuid4())
-            generated_application_id = str(owner_first_name)[0] + str(tenant_first_name)[0] + \
-                                       random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
-            print(generated_application_id)
+            random_uid = str(uuid.uuid4().hex)
+            #generated_application_id = str(owner_first_name)[0] + str(tenant_first_name)[0] + \
+            #                           random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
+            generated_application_id = random_uid
             new_application = Application(
-                     ejariNo=leaseApplicationDetails['contractNo'],
-                     premisNo=leaseApplicationDetails['premiseNo'],
-                     internalID=generated_application_id,
-                     tenantID=generated_tenant_id,
-                     ownerID=generated_owner_id,
-                     depositAmount=leaseApplicationDetails['securityDepositAmount'],
-                     address=leaseApplicationDetails['address'],
-                     statDate=leaseApplicationDetails['contractStartDate'],
-                     endDate=leaseApplicationDetails['contractEndDate']
-                     )
+                ejari_no=leaseApplicationDetails['contractNo'],
+                premis_no=leaseApplicationDetails['premiseNo'],
+                total_contract_value=leaseApplicationDetails['securityDepositAmount'],
+                address=leaseApplicationDetails['address'],
+                start_date=leaseApplicationDetails['contractStartDate'],
+                end_date=leaseApplicationDetails['contractEndDate'],
+                annual_rent=leaseApplicationDetails['annualRent'],
+                property_size=leaseApplicationDetails['propertySize'],
+                property_usage=leaseApplicationDetails['propertyUsage'],
+                deposit_term=depositDetails['term'],
+                deposit_amount=depositDetails['amount'],
+                term_percent=depositDetails['termPercent'],
+                internal_id=generated_application_id,
+                tenant_id=generated_tenant_id,
+                owner_id=generated_owner_id
+            )
             new_application.save()
 
             ##Log the event

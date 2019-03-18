@@ -48,7 +48,7 @@ class User(AbstractBaseUser):
         (TEST, 'TEST')
     )
     
-    accountType = models.CharField(max_length=64, choices=USER_TYPE_CHOICES, default=TEST)
+    account_type = models.CharField(max_length=64, choices=USER_TYPE_CHOICES, default=TEST)
     
     USER_STATUS_CHOICES = (
         ('NEW', 'NEW'),
@@ -56,22 +56,22 @@ class User(AbstractBaseUser):
         ('SUSPENDED', 'SUSPENDED'),
     )
     
-    accountStatus = models.CharField(max_length=64, choices=USER_STATUS_CHOICES, default='NEW')
+    account_status = models.CharField(max_length=64, choices=USER_STATUS_CHOICES, default='NEW')
     
-    firstName = models.CharField(max_length=256, blank=True)
-    lastName = models.CharField(max_length=256, blank=True)
+    first_name = models.CharField(max_length=256, blank=True)
+    last_name = models.CharField(max_length=256, blank=True)
     
-    contactNumber = models.CharField(max_length=64, blank=True)
+    contact_number = models.CharField(max_length=64, blank=True)
     email = models.EmailField(verbose_name='email address', max_length=128, unique=True)
     
-    accountID = models.CharField(max_length=256, default="FFFF", unique=True)
+    account_id = models.CharField(max_length=256, default="FFFF", unique=True)
     password = models.CharField(max_length=256, default="FFFF")
     secret_key = models.CharField(max_length=64, blank=True)
     password_reset_token = models.CharField(max_length=512, blank=True)
-    bankBSB = models.CharField(max_length=64, blank=True)
-    bankNo = models.CharField(max_length=128, blank=True)
-    bankName = models.CharField(max_length=256, blank=True)
-    createdAt = models.DateTimeField(auto_now_add=True)
+    bank_bsb = models.CharField(max_length=64, blank=True)
+    bank_no = models.CharField(max_length=128, blank=True)
+    bank_name = models.CharField(max_length=256, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
@@ -83,8 +83,8 @@ class User(AbstractBaseUser):
         db_table = 'auth_user'
     
     def __str__(self):
-        return '%s %s %s %s %s %s %s' % (self.accountID, self.accountType, self.accountStatus, self.firstName,
-                                         self.lastName, self.contactNumber, self.email)
+        return '%s %s %s %s %s %s %s' % (self.account_id, self.account_type, self.account_status, self.first_name,
+                                         self.last_name, self.contact_number, self.email)
 
     @property
     def is_staff(self):
@@ -96,7 +96,7 @@ class User(AbstractBaseUser):
 
     @property
     def username(self):
-        return '%s %s' % (self.firstName, self.lastName)
+        return '%s %s' % (self.first_name, self.last_name)
     
     def has_module_perms(self, app_label):
         return self.is_admin
@@ -141,31 +141,52 @@ class Application(models.Model):
         ('DISPUTE', 'DISPUTE'),
         ('COMPLETE', 'COMPLETE'),
     )
+
+    APPLICATION_PROPERTY_USAGE = (
+        ('Residential', 'Residential'),
+        ('Commercial', 'Commercial'),
+        ('Industrial', 'Industrial')
+    )
+
+    APPLICATION_DEPOSIT_TERMS = (
+        ('Fixed Amount', 'Fixed Amount'),
+        ('% of Contract Value', '% of Contract Value')
+    )
     
     status = models.CharField(max_length=64, choices=APPLICATION_STATUS_CHOICES, default='NEW')
-    isConfirmedByTenant = models.CharField(max_length=64, default="NO")
-    isConfirmedByOwner = models.CharField(max_length=64, default="NO")
+    is_confirmed_by_tenant = models.CharField(max_length=64, default="NO")
+    is_confirmed_by_owner = models.CharField(max_length=64, default="NO")
     
-    ejariNo = models.CharField(max_length=128)
-    premisNo = models.CharField(max_length=128)
-    internalID = models.CharField(max_length=128)
-    tenantID = models.CharField(max_length=512)
-    ownerID = models.CharField(max_length=512)
+    ejari_no = models.CharField(max_length=128)  #contractNo
+    premis_no = models.CharField(max_length=128)  #premiseNo
+    internal_id = models.CharField(max_length=128)
+    tenant_id = models.CharField(max_length=512)
+    owner_id = models.CharField(max_length=512)
     
-    address = models.CharField(max_length=256)
+    address = models.CharField(max_length=256)  #address
+    total_contract_value = models.CharField(max_length=128,  blank=True)
+    property_usage = models.CharField(max_length=64, choices=APPLICATION_PROPERTY_USAGE, default='RESIDENTIAL')
+    annual_rent = models.CharField(max_length=64, blank=True)
+    property_size = models.CharField(max_length=64, blank=True)
     
-    statDate = models.DateTimeField(blank=True)
-    endDate = models.DateTimeField(blank=True)
+    start_date = models.DateField(blank=True)  #contractStartDate
+    end_date = models.DateField(blank=True)  #contractEndDate
     
-    depositAmount = models.CharField(max_length=128,  blank=True)
-    depositHolding = models.CharField(max_length=64, blank=True)
-    createdAt = models.DateTimeField(auto_now_add=True)
+    deposit_holding = models.CharField(max_length=64, blank=True)
+
+    #deposit Details
+    deposit_term = models.CharField(max_length=64, choices=APPLICATION_DEPOSIT_TERMS, default='Fixed Amount')
+    deposit_amount = models.CharField(max_length=128, blank=True)
+    term_percent = models.CharField(max_length=10, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
-    tenantDisputeClaim = models.CharField(max_length=2048, blank=True)
-    ownerDisputeClaim = models.CharField(max_length=2048, blank=True)
+    tenant_dispute_claim = models.CharField(max_length=2048, blank=True)
+    owner_dispute_claim = models.CharField(max_length=2048, blank=True)
     
     def __str__(self):
-        return self.ejariNo
+        return self.ejari_no
     
     
 """

@@ -4,13 +4,13 @@ from api.models import User, Application, Event, Registration
 
 # Register your models here.
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('id', 'email', 'username', 'accountStatus', 'accountType', 'is_active')
+    list_display = ('id', 'email', 'username', 'account_status', 'account_type', 'is_active')
     search_fields = ('email', 'username')
-    list_filter = ('accountStatus', 'accountType')
+    list_filter = ('account_status', 'account_type')
 
 
 class ApplicationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'ejariNo', 'status', 'isConfirmedByTenant', 'isConfirmedByOwner')
+    list_display = ('id', 'ejari_no', 'status', 'is_confirmed_by_tenant', 'is_confirmed_by_owner')
     list_filter = ('status', )
 
 
