@@ -1,5 +1,5 @@
 from django.contrib import admin
-from api.models import User, Application, Event, Registration
+from api.models import User, Application, Event, Registration, AppFilter
 
 
 # Register your models here.
@@ -18,3 +18,4 @@ admin.site.register(User, UserAdmin)
 admin.site.register(Application, ApplicationAdmin)
 admin.site.register(Event)
 admin.site.register(Registration)
+admin.site.register(AppFilter)

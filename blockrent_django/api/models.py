@@ -202,15 +202,43 @@ class Event(models.Model):
         ('IGNORED', 'IGNORED'),
     )
     
-    status = models.CharField(max_length=512,choices=EVENT_STATUS_CHOICES,default='NEW')
+    status = models.CharField(max_length=512, choices=EVENT_STATUS_CHOICES, default='NEW')
     
     referenceid = models.CharField(max_length=128, blank=True)
     what = models.CharField(max_length=64)
     who = models.CharField(max_length=512)
     when = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('-id', )
     
     def __str__(self):
         return self.referenceid
+
+
+class AppFilter(models.Model):
+    APPLICATION_PROPERTY_USAGE = (
+        ('', ''),
+        ('Residential', 'Residential'),
+        ('Commercial', 'Commercial'),
+        ('Industrial', 'Industrial')
+    )
+
+    filter_owner = models.ForeignKey(User, on_delete=models.CASCADE)
+    filter_name = models.CharField(max_length=64, blank=True)
+    property_type = models.CharField(max_length=64, choices=APPLICATION_PROPERTY_USAGE, blank=True)
+    property_size_name = models.CharField(max_length=64, blank=True)
+    property_size_level = models.IntegerField(default=0)
+    property_size_from = models.IntegerField(default=0)
+    property_size_to = models.IntegerField(default=0)
+    tenant_name = models.CharField(max_length=64, blank=True)
+    owner_name = models.CharField(max_length=64, blank=True)
+    start_date = models.CharField(max_length=64, blank=True)
+    end_date = models.CharField(max_length=64, blank=True)
+    address = models.CharField(max_length=512, blank=True)
+
+    def __str__(self):
+        return self.filter_name
 
 
 models.signals.post_save.connect(create_api_key, sender=User)
