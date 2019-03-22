@@ -4,8 +4,8 @@ from api.models import User, Application, Event, Registration, AppFilter
 
 # Register your models here.
 class UserAdmin(admin.ModelAdmin):
-    list_display = ('id', 'email', 'username', 'account_status', 'account_type', 'is_active')
-    search_fields = ('email', 'username')
+    list_display = ('id', 'email', 'full_name', 'account_status', 'account_type', 'is_active')
+    search_fields = ('email', 'full_name')
     list_filter = ('account_status', 'account_type')
 
 

@@ -2,15 +2,11 @@
 
 from tastypie.authorization import Authorization, DjangoAuthorization
 from tastypie.authentication import BasicAuthentication, ApiKeyAuthentication
-from tastypie import fields
-from tastypie.validation import Validation
 from tastypie.resources import ModelResource, ALL, ALL_WITH_RELATIONS
 from api.models import User, Application, Event, Registration, AppFilter
 from api.core.helpers import send_application_confirm_email, send_account_creation_email
 from django.contrib.auth import authenticate, login, logout
 from django.conf.urls import url
-from django.db.models import Q
-from tastypie.utils import trailing_slash
 from tastypie.http import HttpUnauthorized, HttpForbidden
 from tastypie.resources import convert_post_to_patch
 import uuid
@@ -21,13 +17,9 @@ from tastypie.utils import (
     dict_strip_unicode_keys, is_valid_jsonp_callback_value, string_to_python,
     trailing_slash,
 )
-from tastypie.exceptions import (
-    NotFound, BadRequest, InvalidFilterError, HydrationError, InvalidSortError,
-    ImmediateHttpResponse, Unauthorized, UnsupportedFormat,
-    UnsupportedSerializationFormat, UnsupportedDeserializationFormat,
-)
 from tastypie import http
-from django.http import HttpResponse, HttpResponseNotFound, Http404
+from random import choice
+from string import ascii_letters, digits
 
 
 """
@@ -150,13 +142,13 @@ class ApplicationResource(ModelResource):
     def dehydrate(self, bundle):
         tenant = User.objects.get(account_id=bundle.data['tenant_id'])
         owner = User.objects.get(account_id=bundle.data['owner_id'])
-        bundle.data['tenant_name'] = tenant.username
+        bundle.data['tenant_name'] = tenant.full_name
         bundle.data['tenant_first_name'] = tenant.first_name
         bundle.data['tenant_last_name'] = tenant.last_name
         bundle.data['tenant_phone_number'] = tenant.contact_number
         bundle.data['tenant_email'] = tenant.email
 
-        bundle.data['owner_name'] = owner.username
+        bundle.data['owner_name'] = owner.full_name
         bundle.data['owner_first_name'] = owner.first_name
         bundle.data['owner_last_name'] = owner.last_name
         bundle.data['owner_phone_number'] = owner.contact_number
@@ -203,13 +195,13 @@ class ApplicationDetailResource(ModelResource):
     def dehydrate(self, bundle):
         tenant = User.objects.get(account_id=bundle.data['tenant_id'])
         owner = User.objects.get(account_id=bundle.data['owner_id'])
-        bundle.data['tenant_name'] = tenant.username
+        bundle.data['tenant_name'] = tenant.full_name
         bundle.data['tenant_first_name'] = tenant.first_name
         bundle.data['tenant_last_name'] = tenant.last_name
         bundle.data['tenant_phone_number'] = tenant.contact_number
         bundle.data['tenant_email'] = tenant.email
 
-        bundle.data['owner_name'] = owner.username
+        bundle.data['owner_name'] = owner.full_name
         bundle.data['owner_first_name'] = owner.first_name
         bundle.data['owner_last_name'] = owner.last_name
         bundle.data['owner_phone_number'] = owner.contact_number
@@ -388,7 +380,7 @@ class EventResource(ModelResource):
 
     def dehydrate(self, bundle):
         user = User.objects.get(account_id=bundle.data['who'])
-        bundle.data['username'] = user.username
+        bundle.data['username'] = user.full_name
         return super(EventResource, self).dehydrate(bundle)
 
 """
@@ -428,15 +420,19 @@ class RegistrationResource(ModelResource):
             generated_tenant_id = random_uid
             #generated_tenant_id = str(tenant_first_name)[0] + str(tenant_last_name)[0] + random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
             generated_tenant_password = random_uid[4] + random_uid[5] + random_uid[6] + random_uid[7] + str(tenant_first_name)[0] + str(tenant_last_name)[0]
+            name = generate_random_username()
+            print('tenant username: ' + name)
             print('tenant password: ' + generated_tenant_password)
 
             tenant = User(
-                     account_id=generated_tenant_id,
-                     account_type="TENANT",
-                     first_name=tenant_first_name,
-                     last_name=tenant_last_name,
-                     contact_number=tenantDetails['phoneNumber'],
-                     email=tenantDetails['email'])
+                account_id=generated_tenant_id,
+                account_type="TENANT",
+                first_name=tenant_first_name,
+                last_name=tenant_last_name,
+                contact_number=tenantDetails['phoneNumber'],
+                email=tenantDetails['email'],
+                username=name
+            )
             tenant.set_password(generated_tenant_password)
             tenant.save()
 
@@ -461,6 +457,8 @@ class RegistrationResource(ModelResource):
             generated_owner_id = random_uid
             #generated_owner_id = str(owner_first_name)[0] + str(owner_last_name)[0] + random_uid[0] + random_uid[1] + random_uid[2] + random_uid[3]
             generated_owner_password = random_uid[4] + random_uid[5] + random_uid[6] + random_uid[7] + str(owner_first_name)[0] + str(owner_last_name)[0]
+            name = generate_random_username()
+            print('owner username: ' + name)
             print('owner password: ' + generated_owner_password)
             
             owner = User(
@@ -469,7 +467,9 @@ class RegistrationResource(ModelResource):
                 first_name=ownerDetails['firstName'],
                 last_name=ownerDetails['lastName'],
                 contact_number=ownerDetails['phoneNumber'],
-                email=ownerDetails['email'])
+                email=ownerDetails['email'],
+                username=name
+            )
             owner.set_password(generated_owner_password)
             owner.save()
             send_account_creation_email(owner, generated_owner_password)
@@ -499,6 +499,7 @@ class RegistrationResource(ModelResource):
                 annual_rent=leaseApplicationDetails['annualRent'],
                 property_size=leaseApplicationDetails['propertySize'],
                 property_usage=leaseApplicationDetails['propertyUsage'],
+                currency_type=leaseApplicationDetails['currencyType'],
                 deposit_term=depositDetails['term'],
                 deposit_amount=depositDetails['amount'],
                 term_percent=depositDetails['termPercent'],
@@ -548,3 +549,16 @@ class FilterResource(ModelResource):
 
     def get_object_list(self, request):
         return AppFilter.objects.filter(filter_owner=request.user)
+
+
+def generate_random_username(length=16, chars=ascii_letters + digits, split=4, delimiter='-'):
+    username = ''.join([choice(chars) for i in range(length)])
+
+    if split:
+        username = delimiter.join([username[start:start + split] for start in range(0, len(username), split)])
+
+    try:
+        User.objects.get(username=username)
+        return generate_random_username(length=length, chars=chars, split=split, delimiter=delimiter)
+    except User.DoesNotExist:
+        return username

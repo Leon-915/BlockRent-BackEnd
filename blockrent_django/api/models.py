@@ -7,21 +7,23 @@ from tastypie.models import create_api_key
 
 
 class UserManager(BaseUserManager):
-    def create_user(self, email=None, password=None):
+    def create_user(self, username=None, password=None):
+        """
         if not email:
             raise ValueError('Users must have an email address')
         if not password:
             raise ValueError('Users must have a password')
+        """
 
-        user = self.model(email=self.normalize_email(email),)
+        user = self.model(username=username,)
 
         user.set_password(password)
         user.is_active = True
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password):
-        user = self.create_user(email, password=password)
+    def create_superuser(self, username, password):
+        user = self.create_user(username=username, password=password)
         user.is_admin = True
         user.save(using=self._db)
         return user
@@ -63,6 +65,7 @@ class User(AbstractBaseUser):
     
     contact_number = models.CharField(max_length=64, blank=True)
     email = models.EmailField(verbose_name='email address', max_length=128, unique=True)
+    username = models.CharField(max_length=255, unique=True)
     
     account_id = models.CharField(max_length=256, default="FFFF", unique=True)
     password = models.CharField(max_length=256, default="FFFF")
@@ -77,7 +80,7 @@ class User(AbstractBaseUser):
     is_admin = models.BooleanField(default=False)
 
     objects = UserManager()
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = 'username'
 
     class Meta:
         db_table = 'auth_user'
@@ -95,7 +98,7 @@ class User(AbstractBaseUser):
         return self.is_admin
 
     @property
-    def username(self):
+    def full_name(self):
         return '%s %s' % (self.first_name, self.last_name)
     
     def has_module_perms(self, app_label):
@@ -152,6 +155,13 @@ class Application(models.Model):
         ('Fixed Amount', 'Fixed Amount'),
         ('% of Contract Value', '% of Contract Value')
     )
+
+    CURRENCY_TYPE = (
+        ('AED', 'AED'),
+        ('USD', 'USD'),
+        ('GBP', 'GBP'),
+        ('AUD', 'AUD')
+    )
     
     status = models.CharField(max_length=64, choices=APPLICATION_STATUS_CHOICES, default='NEW')
     is_confirmed_by_tenant = models.CharField(max_length=64, default="NO")
@@ -168,6 +178,7 @@ class Application(models.Model):
     property_usage = models.CharField(max_length=64, choices=APPLICATION_PROPERTY_USAGE, default='RESIDENTIAL')
     annual_rent = models.CharField(max_length=64, blank=True)
     property_size = models.CharField(max_length=64, blank=True)
+    currency_type = models.CharField(max_length=32, choices=CURRENCY_TYPE, blank=True)
     
     start_date = models.DateField(blank=True)  #contractStartDate
     end_date = models.DateField(blank=True)  #contractEndDate
